@@ -1,19 +1,20 @@
-import kivy
-
 from kivymd.app import MDApp
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.textinput import TextInput
 
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.button import MDRoundFlatButton
+from kivy.animation import Animation
 
 Builder.load_string('''
 <LoginScreen>:
     id: login_screen
 
     MDCard:
+        id: card
         size_hint_y: None
         size_hint_x: 0.7
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
@@ -57,24 +58,63 @@ Builder.load_string('''
             password: True
 
         MDRoundFlatButton:
+            id: login_button
             text: "LOG IN"
             font_size: 50
             pos_hint: {"center_x": 0.5}
-            on_press: app.logger()
+            on_press: root.logger()
 
         MDRoundFlatButton:
-            text: "CLEAR"
+            id: create_account
+            text: "Create account"
             font_size: 50
             pos_hint: {"center_x": 0.5} 
-            on_press: app.clear()           
+            on_press: root.register()           
 
         Widget:
             size_hint_y: None
-            height: 10''')
+            height: 10
+
+<HomeScreen>:
+    id: homescreen
+            ''')
 
 
 class LoginScreen(Screen):
-    pass
+    # class EmailField(MDTextField):
+    #        def __init__(self, **kwargs):
+    #            super(EmailField, self).__init__(**kwargs)
+
+    def logger(self):
+        self.ids.welcome_label.text = f'Hi {self.ids.user.text}!'
+        self.manager.current = 'home'
+
+    def register(self):
+        self.ids.welcome_label.text = 'Create account'
+        # self.ids.card.remove_widget(self.ids.login_button)
+        self.anim_remove(self.ids.login_button)
+        self.ids.card.add_widget(MDTextField(
+            mode='round',
+            hint_text='email',
+            icon_right='email',
+            size_hint_x=.7,
+            font_size=50,
+            pos_hint={'center_x': .5}), index=3)
+        self.ids.card.remove_widget(self.ids.create_account)
+        self.ids.card.add_widget(MDRoundFlatButton(
+            text='Register',
+            pos_hint={'center_x': .5},
+            font_size=50), index=1)
+
+    def anim_remove(self, item):
+        anim = Animation(width=0, opacity=0, d=0.5)
+        anim.bind(on_complete=lambda *args: self.ids.card.remove_widget(item))
+        anim.start(item)
+
+    def clear(self):
+        self.ids.welcome_label.text = "Hello"
+        self.ids.user.text = ""
+        self.ids.password.text = ""
 
 
 class HomeScreen(Screen):
@@ -102,16 +142,6 @@ class SamuraiPath(MDApp):
         sm.add_widget(LoginScreen(name='login'))
         sm.add_widget(HomeScreen(name='home'))
         return sm
-
-    def logger(self):
-        # self.root.ids.screenmanager.ids.welcome_label.text = f'Sup {self.root.ids.user.text}!'
-        a = self.root.ids.screenmanager.ids.welcome_label.text
-        print(a)
-
-    def clear(self):
-        self.root.ids.welcome_label.text = "Work"
-        self.root.ids.user.text = ""
-        self.root.ids.password.text = ""
 
 
 if __name__ == '__main__':
