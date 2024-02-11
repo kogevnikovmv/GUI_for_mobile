@@ -10,6 +10,7 @@ from kivymd.uix.button import MDRoundFlatButton
 from kivy.animation import Animation
 from kivy.metrics import dp
 
+# описание логин скрина на kv language
 Builder.load_string('''
 <LoginScreen>:
     id: login_screen
@@ -37,7 +38,7 @@ Builder.load_string('''
 
         MDTextField:
             mode: "round"
-            id: user
+            id: login
             hint_text: "username"
             icon_right: "account"
             size_hint_x: 0.7
@@ -58,12 +59,22 @@ Builder.load_string('''
             pos_hint: {"center_x": 0.5}
             password: True
 
+        Label:
+            id: error_text
+            text: ' '
+            color: 'red'
+            font_size: dp(10)
+            halign: 'center'
+            size_hint_y: None
+            height: self.texture_size[1]
+
+
         MDRoundFlatButton:
             id: login_button
             text: "Log In"
             font_size: dp(19)
             pos_hint: {"center_x": 0.5}
-            on_press: root.logger()
+            on_press: root.login()
 
         MDRoundFlatButton:
             id: create_account
@@ -83,23 +94,43 @@ Builder.load_string('''
 
 class LoginScreen(Screen):
 
-    def logger(self):
-        self.ids.welcome_label.text = f'Hi {self.ids.user.text}!'
-        self.manager.current = 'home'
+    # идентификация пользователя
+    def login(self):
+        # получение пароля\логина по id
+        login = self.ids.login.text
+        password = self.ids.password.text
+        # аутентификация
+        if self.auth(login, password) == True:
+            self.manager.current = 'home'
+        else:
+            self.ids.error_text.text = 'login/password incorrect'
 
+    # пока имитация аутентификации
+    def auth(self, login, password):
+        if login == 'admin' and password == 'goodadmin':
+            return True
+        else:
+            return False
+
+    # анимация исчезновения окна логина
+    # по ЗАВЕРШЕНИЮ анимации запускается ф-ция register
     def anim_disappeare(self):
         anim = Animation(opacity=0, d=0.5)
         anim.bind(on_complete=lambda *args: self.register())
         anim.start(self.ids.card)
 
+    # анимация появления окна регистрации
     def anim_appeare(self):
         anim = Animation(opacity=1, d=0.5)
         anim.start(self.ids.card)
 
+    # изменение логин формы в регистрационную форму
+    # все изменения происходят пока форма невидима
     def register(self):
+        if self.ids.error_text.text != ' ':
+            self.ids.error_text.text = ' '
         self.ids.welcome_label.text = 'Register'
         self.ids.card.remove_widget(self.ids.login_button)
-        # self.anim_remove(self.ids.login_button)
         self.ids.card.add_widget(MDTextField(
             mode='round',
             hint_text='email',
@@ -114,7 +145,7 @@ class LoginScreen(Screen):
             font_size=dp(19)), index=1)
         self.anim_appeare()
 
-
+# главное окно
 class HomeScreen(Screen):
     def __init__(self, **kwargs):
         super(HomeScreen, self).__init__(**kwargs)
@@ -127,11 +158,12 @@ class HomeScreen(Screen):
         layout.add_widget(button_settings)
         self.add_widget(layout)
 
+    # ф-ция смены экрана на settings
     def go_to_settings(self, *args):
         # self.manager.current='settings'
         print('пока такого экрана нет')
 
-
+# главный класс, создаем скрин менеджера
 class SamuraiPath(MDApp):
     def build(self):
         self.theme_cls.theme_style = "Dark"
