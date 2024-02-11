@@ -127,8 +127,9 @@ class LoginScreen(Screen):
     # изменение логин формы в регистрационную форму
     # все изменения происходят пока форма невидима
     def register(self):
-        if self.ids.error_text.text != ' ':
-            self.ids.error_text.text = ' '
+        self.ids.error_text.text = ' '
+        self.ids.login.text=''
+        self.ids.password.text=''
         self.ids.welcome_label.text = 'Register'
         self.ids.card.remove_widget(self.ids.login_button)
         self.ids.card.add_widget(MDTextField(
