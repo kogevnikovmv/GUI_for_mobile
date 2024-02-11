@@ -3,36 +3,30 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
 
-from kivy.uix.anchorlayout import AnchorLayout
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDRoundFlatButton
 from kivy.animation import Animation
 from kivy.metrics import dp
-from kivymd.uix.gridlayout import MDGridLayout
 
 Builder.load_string('''
 <LoginScreen>:
     id: login_screen
 
-    MDGridLayout:
-        cols: 1
-        rows: 10
+    MDCard:
         id: card
-        row_default_height: dp(50)
         size_hint_y: None
         size_hint_x: 0.7
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
         elevation: 10
         padding: 25
         spacing: 50
-        orientation: 'tb-lr'
+        orientation: 'vertical'
         height: self.minimum_height
 
 
         MDLabel:
-            index: 0
             id: welcome_label
             text: "Hello"
             font_size: dp(44)
@@ -42,7 +36,6 @@ Builder.load_string('''
             padding_y: 15
 
         MDTextField:
-            index: 1
             mode: "round"
             id: user
             hint_text: "username"
@@ -54,7 +47,6 @@ Builder.load_string('''
             pos_hint: {"center_x": 0.5}
 
         MDTextField:
-            index: 2
             mode: "round"
             id: password
             hint_text: "password"
@@ -66,24 +58,19 @@ Builder.load_string('''
             pos_hint: {"center_x": 0.5}
             password: True
 
-        AnchorLayout:
-            index: 3
-            id: anchr_log
-            MDRoundFlatButton:
-                id: login_button
-                text: "LOG IN"
-                font_size: dp(19)
-                pos_hint: {"center_x": 0.5}
-                on_press: root.logger()
+        MDRoundFlatButton:
+            id: login_button
+            text: "Log In"
+            font_size: dp(19)
+            pos_hint: {"center_x": 0.5}
+            on_press: root.logger()
 
-        AnchorLayout:
-            index: 4
-            MDRoundFlatButton:
-                id: create_account
-                text: "Create account"
-                font_size: dp(19)
-                pos_hint: {"center_x": 0.5} 
-                on_press: root.remove()           
+        MDRoundFlatButton:
+            id: create_account
+            text: "Create account"
+            font_size: dp(19)
+            pos_hint: {"center_x": 0.5} 
+            on_press: root.anim_disappeare()           
 
         Widget:
             size_hint_y: None
@@ -100,52 +87,32 @@ class LoginScreen(Screen):
         self.ids.welcome_label.text = f'Hi {self.ids.user.text}!'
         self.manager.current = 'home'
 
-    def remove(self):
-        self.anim_remove(self.ids.login_button)
-        self.anim_remove(self.ids.create_account)
-        self.add()
+    def anim_disappeare(self):
+        anim = Animation(opacity=0, d=0.5)
+        anim.bind(on_complete=lambda *args: self.register())
+        anim.start(self.ids.card)
 
-    def add(self):
+    def anim_appeare(self):
+        anim = Animation(opacity=1, d=0.5)
+        anim.start(self.ids.card)
+
+    def register(self):
+        self.ids.welcome_label.text = 'Register'
+        self.ids.card.remove_widget(self.ids.login_button)
+        # self.anim_remove(self.ids.login_button)
         self.ids.card.add_widget(MDTextField(
             mode='round',
             hint_text='email',
             icon_right='email',
             size_hint_x=.7,
             font_size=dp(19),
-            pos_hint={'center_x': .5}), index=4)
+            pos_hint={'center_x': .5}), index=3)
+        self.ids.card.remove_widget(self.ids.create_account)
         self.ids.card.add_widget(MDRoundFlatButton(
             text='Register',
             pos_hint={'center_x': .5},
-            font_size=dp(19)), index=3)
-
-    def new_account(self):
-        self.ids.welcome_label.text = 'Register'
-        # self.ids.card.remove_widget(self.ids.login_button)
-        # self.anim_remove(self.ids.login_button)
-        # self.ids.card.add_widget(MDTextField(
-
-    #            mode='round',
-    #            hint_text='email',
-    #            icon_right='email',
-    #            size_hint_x=.7,
-    #            font_size=dp(19),
-    #            pos_hint={'center_x':.5}), index=3)
-    # self.ids.card.remove_widget(self.ids.create_account)
-    # self.anim_remove(self.ids.create_account)
-    # self.ids.card.add_widget(MDRoundFlatButton(
-    #            text='Register',
-    #            pos_hint={'center_x':.5},
-    #            font_size=dp(19)), index=4)
-
-    def anim_remove(self, item):
-        anim = Animation(width=0, opacity=0, d=0.5)
-        anim.bind(on_complete=lambda *args: self.ids.card.remove_widget(item))
-        anim.start(item)
-
-    def clear(self):
-        self.ids.welcome_label.text = "Hello"
-        self.ids.user.text = ""
-        self.ids.password.text = ""
+            font_size=dp(19)), index=1)
+        self.anim_appeare()
 
 
 class HomeScreen(Screen):
