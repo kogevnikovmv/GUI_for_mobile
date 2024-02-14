@@ -1,42 +1,45 @@
 from fastapi import APIRouter, Body, HTTPException
-from database.database import UsersDB
-import models
+from api_auth.users_db import db
+from api_auth import models
+from api_auth.config import DbPath
 
 import hashlib
 import random
 import string
 
-db=UsersDB()
+#import uvicorn
+
+users=db.UsersDB(DbPath.WIN_PATH)
 
 auth_router=APIRouter()
 
 @auth_router.on_event('startup')
-async def db_connect():
-    await db.connect()
+def db_connect():
+    users.connect()
     print('db connected')
     
 @auth_router.on_event('shutdown')
-async def db_close():
-    await db.close()
+def db_close():
+    users.close()
     print('db closed')
 
 
 
 @auth_router.post('/register')
 async def create_user(user: models.UserCreate):
-    check_user=db.check_email(user.email)
+    check_user=users.check_email(user.email)
     if check_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     salt=get_random_strings()
     hashed_password=hash_password(user.password, salt)
-    db.add_user(user.username, user.email, hashed_password=f'{salt}.{hashed_password}')
+    users.add_user(user.username, user.email, hashed_password=f'{salt}.{hashed_password}')
     print('user created')
 
 
 @auth_router.post('/login')
 def login(data=Body()):
     login=data['login']
-    user=db.get_user_by_username(login)
+    user=users.get_user_by_username(login)
 
 def check_email():
     pass
@@ -56,3 +59,6 @@ def hash_password(password: str, salt: str = None):
     
 #user=db.get_user_by_username('test_user_1')
 #print(user.email)
+
+#if __name__ == '__main__':
+#    uvicorn.run(app='auth:auth_router')

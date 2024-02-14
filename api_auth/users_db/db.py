@@ -1,22 +1,10 @@
 from peewee import *
 import platform
-from api.api_auth.config import DbPath
 import json
 
 class UsersDB():
-    def __init__(self):
-		
-		# путь к файлу с бд в зависимости от системы где я запускаю бот
-		# этот кусок кода совсем не обязателен, я написал его для своего удобства
-		# для телефона =)
-        if platform.system()=='Linux':
-            self.db_path=DbPath.MOBILE_PATH
-        elif platform.system()=='Windows':
-            self.db_path=DbPath.WIN_PATH
-        else:
-            print('система не определена')
-		
-		# создаем объект бд
+    def __init__(self, db_path):
+        self.db_path=db_path
         self.db = SqliteDatabase(self.db_path)
 		
 		
