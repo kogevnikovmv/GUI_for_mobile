@@ -32,8 +32,8 @@ async def create_user(user: models.UserCreate):
         raise HTTPException(status_code=400, detail="Email already registered")
     salt=get_random_strings()
     hashed_password=hash_password(user.password, salt)
-    users.add_user(user.username, user.email, hashed_password=f'{salt}.{hashed_password}')
-    print('user created')
+    user_id=users.add_user(user.username, user.email, hashed_password=f'{salt}.{hashed_password}')
+    token=create_user_token(user_id)
 
 
 @auth_router.post('/login')
@@ -46,6 +46,10 @@ def check_email():
     
 def check_token():
     pass
+
+def create_user_token(user_id):
+    token=users.create_token(user_id)
+
 
 # случайные символы - соль
 def get_random_strings(length=12):

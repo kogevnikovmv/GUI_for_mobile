@@ -1,6 +1,17 @@
 from peewee import *
-import platform
-import json
+import uuid
+from datetime import datetime
+
+class UIDField(Field):
+    db_field='uid'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default=uuid.uuid4
+
+    def db_value(self, value):
+        return str(value)
+    def python_value(self, value):
+        return uuid.UUID(value)
 
 class UsersDB():
     def __init__(self, db_path):
@@ -14,14 +25,23 @@ class UsersDB():
                 database=self.db
                 table_name='Users'
 
-            id = AutoField(primary_key=True)
             username=TextField()
             email=TextField()
             hashed_password=TextField()
-        
-        self.Users=Users()
+
+        class Token(Model):
+            class Meta:
+                database=self.db
+                table_name='Tokens'
+            user=ForeignKeyField(Users, backref='token')
+            token=TextField()
+            #uid=UIDField()
+            #date=DateField()
+
         self.db.connect()
-        self.db.create_tables([Users],)
+        self.Users=Users()
+        self.Token=Token()
+        self.db.create_tables([Users, Token],)
         self.db.close()
     def __enter__(self):
         return self
@@ -63,13 +83,17 @@ class UsersDB():
 	# ************Функции для работы***********
     
     def add_user(self, username, email, hashed_password):
-        new_user=self.Users.create(username=username, email=email, hashed_password=hashed_password)
-	
+        user=self.Users.create(username=username, email=email, hashed_password=hashed_password)
+        return user
+
+    def create_token(self, user, token):
+        self.Token.create(user=user, token=token)
+
 	#запрос на получение записи по username
     def get_user_by_username(self, username):
-        query=self.Users.get_or_none(username=username)
-        user=[query.id, query.username, query.email, query.hashed_password]
-        return query
+        user=self.Users.get_or_none(username=username)
+        #user=[user.id, user.username, user.email, user.hashed_password]
+        return user
 
 
 	#проверка что email не зарегистрирован
