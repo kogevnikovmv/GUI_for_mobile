@@ -29,19 +29,18 @@ class UsersDB():
             email=TextField()
             hashed_password=TextField()
 
-        class Token(Model):
+        class Tokens(Model):
             class Meta:
                 database=self.db
                 table_name='Tokens'
-            user=ForeignKeyField(Users, backref='token')
-            token=TextField()
-            #uid=UIDField()
+            user_id=ForeignKeyField(Users, backref='tokens')
+            token=UIDField()
             #date=DateField()
 
         self.db.connect()
         self.Users=Users()
-        self.Token=Token()
-        self.db.create_tables([Users, Token],)
+        self.Tokens=Tokens()
+        self.db.create_tables([Users, Tokens],)
         self.db.close()
     def __enter__(self):
         return self
@@ -55,51 +54,27 @@ class UsersDB():
     def connect(self):
         self.db.connect()
 
-
-	# ********Функции для проверки работы бд************
-
-	#получение всех записей в бд
-    def get_all_rows(self):
-        cursor=self.db.cursor()
-        cursor.execute('SELECT * FROM Users')
-        result=cursor.fetchall()
-        print(result)
-
-	#получить названия всех таблиц бд
-    def get_tables_names(self):
-        list_names=self.db.get_tables()
-        for name in list_names:
-            print('table: ', name)
-	
-	#получить имена столбцов
-    def get_fields(self):
-        print(self.Users._meta.fields)
-
-    def add_test_user(self):
-        new_user = self.Users.create(username='test_user_1', email='test@test.ru', hashed_password='no_password')
-        print('player add')
-
-
-	# ************Функции для работы***********
     
     def add_user(self, username, email, hashed_password):
         user=self.Users.create(username=username, email=email, hashed_password=hashed_password)
         return user
 
-    def create_token(self, user, token):
-        self.Token.create(user=user, token=token)
+    def create_token(self, user):
+        token=self.Tokens.get_or_none(user_id=user.id)
+        if token:
+            token.token=uuid.uuid4()
+        else:
+            token=self.Tokens.create(user_id=user.id)
+        return token.token
 
 	#запрос на получение записи по username
     def get_user_by_username(self, username):
         user=self.Users.get_or_none(username=username)
-        #user=[user.id, user.username, user.email, user.hashed_password]
         return user
 
-
-	#проверка что email не зарегистрирован
-    def check_email(self, email):
-        return self.Users.get_or_none(email=email)
-
+    def get_user_by_email(self, email):
+        user = self.Users.get_or_none(email=email)
+        return user
 
 
 
