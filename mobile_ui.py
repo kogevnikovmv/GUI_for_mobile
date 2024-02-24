@@ -3,12 +3,18 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
 
+from kivy.storage.jsonstore import JsonStore
+
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDRoundFlatButton
 from kivy.animation import Animation
 from kivy.metrics import dp
+from kivy.uix.image import Image
+
+from kivy.clock import Clock
+import requests
 
 # описание логин скрина на kv language
 Builder.load_string('''
@@ -88,8 +94,48 @@ Builder.load_string('''
             height: 10
 
 <HomeScreen>:
-    id: homescreen
-            ''')
+    id: homescreen''')
+
+# <LogoScreen>:
+#    id: logoscreen
+#    Image:
+#        id: logo_img
+#        source: 'static_files/main_logo.png'
+#        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+#        size_hint_y: 0.7
+#        size_hint_x: 0.7
+#        fit_mode: 'contain'
+#            ''')
+
+storage = JsonStore('../data_app.json')
+
+
+
+
+class LogoScreen(Screen):
+    def __init__(self, **kwargs):
+        super(LogoScreen, self).__init__(**kwargs)
+
+        self.logo = Image(source='static_files/main_logo.png',
+                          pos_hint={'center_x': .5, 'center_y': .5},
+                          size_hint_y=.7,
+                          size_hint_x=.7,
+                          fit_mode='contain')
+        self.add_widget(self.logo)
+        self.authtorization()
+
+    def authtorization(self):
+        pass
+        # не верно(
+        #Clock.schedule_once(lambda dt: self.anim_disappeare, 0.5)
+
+    def anim_disappeare(self):
+        anim = Animation(opacity=0, d=0.5)
+        anim.bind(on_complete=lambda *args: self.go_to_login())
+        anim.start(self.logo)
+
+    def go_to_login(self, *args):
+        self.manager.current = 'login'
 
 
 class LoginScreen(Screen):
@@ -107,10 +153,14 @@ class LoginScreen(Screen):
 
     # пока имитация аутентификации
     def auth(self, login, password):
-        if login == 'admin' and password == 'goodadmin':
-            return True
-        else:
-            return False
+        response = requests.post('http://127.0.0.1:8000/login',
+                                 json={"username": login, "password": password})
+        token = response.json().get('token')
+        token = token.get('token')
+        print(token)
+        storage.put('auth_token', token=token)
+
+
 
     # анимация исчезновения окна логина
     # по ЗАВЕРШЕНИЮ анимации запускается ф-ция register
@@ -128,8 +178,8 @@ class LoginScreen(Screen):
     # все изменения происходят пока форма невидима
     def register(self):
         self.ids.error_text.text = ' '
-        self.ids.login.text=''
-        self.ids.password.text=''
+        self.ids.login.text = ''
+        self.ids.password.text = ''
         self.ids.welcome_label.text = 'Register'
         self.ids.card.remove_widget(self.ids.login_button)
         self.ids.card.add_widget(MDTextField(
@@ -145,6 +195,7 @@ class LoginScreen(Screen):
             pos_hint={'center_x': .5},
             font_size=dp(19)), index=1)
         self.anim_appeare()
+
 
 # главное окно
 class HomeScreen(Screen):
@@ -164,12 +215,14 @@ class HomeScreen(Screen):
         # self.manager.current='settings'
         print('пока такого экрана нет')
 
+
 # главный класс, создаем скрин менеджера
 class SamuraiPath(MDApp):
     def build(self):
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = 'BlueGray'
         sm = ScreenManager()
+        sm.add_widget(LogoScreen(name='logo'))
         sm.add_widget(LoginScreen(name='login'))
         sm.add_widget(HomeScreen(name='home'))
         return sm
