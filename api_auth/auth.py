@@ -3,6 +3,8 @@ from api_auth.users_db import db
 from api_auth import models
 from api_auth.config import DbPath
 
+import time
+
 import hashlib
 import random
 import string
@@ -23,7 +25,10 @@ def db_close():
     users.close()
     print('db closed')
 
-
+@auth_router.post('/auth')
+async def auth():
+    time.sleep(10)
+    return {'message': 'work?'}
 
 @auth_router.post('/register', response_model=models.UserToken)
 async def create_user(user: models.UserCreate):

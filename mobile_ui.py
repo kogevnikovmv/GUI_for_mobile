@@ -88,7 +88,7 @@ Builder.load_string('''
             text: "Create account"
             font_size: dp(19)
             pos_hint: {"center_x": 0.5} 
-            on_press: root.anim_disappeare()           
+            on_press: root.login_button_disappeare()           
 
         Widget:
             size_hint_y: None
@@ -123,24 +123,29 @@ class LogoScreen(Screen):
                           fit_mode='contain')
         self.add_widget(self.logo)
 
+    # функция события(?) срабатывает как экран отобразится
+    # не дописана
     def on_enter(self):
+        screen=''
         try:
             token=storage.get('auth_token')['token']
+            response = requests.post('http://127.0.0.1:8000/auth')
+            print(response.json())
+            # здесь должна быть проверка токена на валидность, но её пока нет)
+            if token:
+                screen='home'
         except(KeyError):
             screen='login'
-        Clock.schedule_once(self.anim_disappeare(screen), 3)
+        Clock.schedule_once(self.logo_disappeare(screen), 3)
 
 
-    def authtorization(self):
-        pass
-        # не верно(
-
-    def anim_disappeare(self, screen, *args):
+    #анимация исчезновения лого
+    def logo_disappeare(self, screen, *args):
         anim = Animation(opacity=0, d=0.5)
-        anim.bind(on_complete=lambda *args: self.go_to_login(screen))
+        anim.bind(on_complete=lambda *args: self.go_to(screen))
         anim.start(self.logo)
 
-    def go_to_login(self, screen, *args):
+    def go_to(self, screen, *args):
         self.manager.current = screen
 
 
@@ -151,62 +156,70 @@ class LoginScreen(Screen):
         # получение пароля\логина по id
         login = self.ids.login.text
         password = self.ids.password.text
-        # аутентификация
-        if self.auth(login, password) == True:
-            self.manager.current = 'home'
-        else:
-            self.ids.error_text.text = 'login/password incorrect'
-
-    # пока имитация аутентификации
-    def auth(self, login, password):
         response = requests.post('http://127.0.0.1:8000/login',
                                  json={"username": login, "password": password})
         if not response.json().get('token'):
-            return False
-        token=response.json().get('token')
-        token = token.get('token')
-        print(token)
-        storage.put('auth_token', token=token)
-        return True
+            self.ids.error_text.text = 'login/password incorrect'
+        elif response.json().get('token'):
+            token = response.json().get('token')
+            token = token.get('token')
+            print(token) #delete
+            storage.put('auth_token', token=token)
+            self.go_to_home_screen()
 
-
-
+    def go_to_home_screen(self):
+        self.manager.current = 'home'
 
 
     # анимация исчезновения окна логина
     # по ЗАВЕРШЕНИЮ анимации запускается ф-ция register
-    def anim_disappeare(self):
+    def login_button_disappeare(self):
         anim = Animation(opacity=0, d=0.5)
-        anim.bind(on_complete=lambda *args: self.register())
+        anim.bind(on_complete=lambda *args: self.create_register_form())
         anim.start(self.ids.card)
 
     # анимация появления окна регистрации
-    def anim_appeare(self):
+    def register_form_appeare(self):
         anim = Animation(opacity=1, d=0.5)
         anim.start(self.ids.card)
 
     # изменение логин формы в регистрационную форму
     # все изменения происходят пока форма невидима
-    def register(self):
+    def create_register_form(self):
         self.ids.error_text.text = ' '
         self.ids.login.text = ''
         self.ids.password.text = ''
         self.ids.welcome_label.text = 'Register'
         self.ids.card.remove_widget(self.ids.login_button)
-        self.ids.card.add_widget(MDTextField(
+        self.reg_button=MDTextField(
             mode='round',
             hint_text='email',
             icon_right='email',
             size_hint_x=.7,
             font_size=dp(19),
-            pos_hint={'center_x': .5}), index=3)
+            pos_hint={'center_x': .5})
+        self.ids.card.add_widget(self.reg_button, index=3)
         self.ids.card.remove_widget(self.ids.create_account)
         self.ids.card.add_widget(MDRoundFlatButton(
             text='Register',
             pos_hint={'center_x': .5},
             font_size=dp(19)), index=1)
-        self.anim_appeare()
+        self.register_form_appeare()
 
+    def register(self):
+        login = self.ids.login.text
+        email=self.reg_button.text
+        password = self.ids.password.text
+        response = requests.post('http://127.0.0.1:8000/login',
+                                 json={"username": login, "email": email, "password": password})
+        if not response.json().get('token'):
+            self.ids.error_text.text = 'registration gone wrong=)'
+        elif response.json().get('token'):
+            token = response.json().get('token')
+            token = token.get('token')
+            print(token)#delete
+            storage.put('auth_token', token=token)
+            self.go_to_home_screen()
 
 # главное окно
 class HomeScreen(Screen):
