@@ -7,6 +7,7 @@ from kivy.storage.jsonstore import JsonStore
 
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen
+
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.button import MDRoundFlatButton
 from kivy.animation import Animation
@@ -111,7 +112,6 @@ storage = JsonStore('../data_app.json')
 
 
 
-
 class LogoScreen(Screen):
     def __init__(self, **kwargs):
         super(LogoScreen, self).__init__(**kwargs)
@@ -122,20 +122,26 @@ class LogoScreen(Screen):
                           size_hint_x=.7,
                           fit_mode='contain')
         self.add_widget(self.logo)
-        self.authtorization()
+
+    def on_enter(self):
+        try:
+            token=storage.get('auth_token')['token']
+        except(KeyError):
+            screen='login'
+        Clock.schedule_once(self.anim_disappeare(screen), 3)
+
 
     def authtorization(self):
         pass
         # не верно(
-        #Clock.schedule_once(lambda dt: self.anim_disappeare, 0.5)
 
-    def anim_disappeare(self):
+    def anim_disappeare(self, screen, *args):
         anim = Animation(opacity=0, d=0.5)
-        anim.bind(on_complete=lambda *args: self.go_to_login())
+        anim.bind(on_complete=lambda *args: self.go_to_login(screen))
         anim.start(self.logo)
 
-    def go_to_login(self, *args):
-        self.manager.current = 'login'
+    def go_to_login(self, screen, *args):
+        self.manager.current = screen
 
 
 class LoginScreen(Screen):
@@ -155,10 +161,15 @@ class LoginScreen(Screen):
     def auth(self, login, password):
         response = requests.post('http://127.0.0.1:8000/login',
                                  json={"username": login, "password": password})
-        token = response.json().get('token')
+        if not response.json().get('token'):
+            return False
+        token=response.json().get('token')
         token = token.get('token')
         print(token)
         storage.put('auth_token', token=token)
+        return True
+
+
 
 
 
