@@ -15,7 +15,9 @@ from kivy.metrics import dp
 from kivy.uix.image import Image
 
 from kivy.clock import Clock
+
 import requests
+from kivy.network.urlrequest import UrlRequest
 
 # описание логин скрина на kv language
 Builder.load_string('''
@@ -108,7 +110,8 @@ Builder.load_string('''
 #        fit_mode: 'contain'
 #            ''')
 
-storage = JsonStore('../data_app.json')
+storage = JsonStore('static_files/data_app.json')
+storage.put('auth_token', token='adffewefvjhvfjwvfg')
 
 
 
@@ -126,26 +129,27 @@ class LogoScreen(Screen):
     # функция события(?) срабатывает как экран отобразится
     # не дописана
     def on_enter(self):
-        screen=''
         try:
-            token=storage.get('auth_token')['token']
-            response = requests.post('http://127.0.0.1:8000/auth')
-            print(response.json())
-            # здесь должна быть проверка токена на валидность, но её пока нет)
-            if token:
-                screen='home'
+            token = storage.get('auth_token')['token']
+            req=UrlRequest('http://127.0.0.1:8000/auth', req_headers={'Content-Type': 'application/json'}, req_body={'token': token}, on_success=self.check_token_result)
         except(KeyError):
-            screen='login'
-        Clock.schedule_once(self.logo_disappeare(screen), 3)
+            self.logo_disappeare('login')
+
+    def check_token_result(self, req, result):
+        if result['message']=='ok':
+            self.logo_disappeare('home')
+        else:
+            self.logo_disappeare('login')
+
 
 
     #анимация исчезновения лого
-    def logo_disappeare(self, screen, *args):
+    def logo_disappeare(self, screen):
         anim = Animation(opacity=0, d=0.5)
-        anim.bind(on_complete=lambda *args: self.go_to(screen))
+        anim.bind(on_complete=lambda *args: self.go_to_next_screen(screen))
         anim.start(self.logo)
 
-    def go_to(self, screen, *args):
+    def go_to_next_screen(self, screen):
         self.manager.current = screen
 
 
@@ -156,19 +160,32 @@ class LoginScreen(Screen):
         # получение пароля\логина по id
         login = self.ids.login.text
         password = self.ids.password.text
-        response = requests.post('http://127.0.0.1:8000/login',
-                                 json={"username": login, "password": password})
-        if not response.json().get('token'):
-            self.ids.error_text.text = 'login/password incorrect'
-        elif response.json().get('token'):
-            token = response.json().get('token')
-            token = token.get('token')
-            print(token) #delete
-            storage.put('auth_token', token=token)
-            self.go_to_home_screen()
+        print('ok?')
+        req = UrlRequest('http://127.0.0.1:8000/login',
+                         on_failure=self.failure_req,
+                         on_error=self.error_req,
+                         req_body={"username": login, "password": password}, on_success=self.get_user_token)
 
-    def go_to_home_screen(self):
-        self.manager.current = 'home'
+
+    def failure_req(self, req, result):
+        print(str(result))
+        print(str(req.error))
+
+    def error_req(self, req, result):
+        print(str(result))
+        print(str(req.error))
+
+    def get_user_token(self, req, result):
+        print(result)
+        if result['token']:
+            token=result['token']
+            storage.put('auth_token', token=token['token'])
+            self.go_to_screen('home')
+        else:
+            print(result)
+
+    def go_to_screen(self, screen):
+        self.manager.current = screen
 
 
     # анимация исчезновения окна логина

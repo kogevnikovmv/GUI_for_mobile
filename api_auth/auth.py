@@ -3,13 +3,11 @@ from api_auth.users_db import db
 from api_auth import models
 from api_auth.config import DbPath
 
-import time
 
 import hashlib
 import random
 import string
 
-#import uvicorn
 
 users=db.UsersDB(DbPath.WIN_PATH)
 
@@ -26,9 +24,12 @@ def db_close():
     print('db closed')
 
 @auth_router.post('/auth')
-async def auth():
-    time.sleep(10)
-    return {'message': 'work?'}
+async def auth(token: models.AuthToken):
+    if check_token():
+        # =)
+        return {'message': 'ok'}
+    else:
+        raise HTTPException(status_code=400, detail="wrong auth_token")
 
 @auth_router.post('/register', response_model=models.UserToken)
 async def create_user(user: models.UserCreate):
@@ -63,8 +64,8 @@ def check_password(user_password, hashed):
     return hash_password(user_password, salt)==hashed_password
 
 
-def check_token():
-    pass
+def check_token(token):
+    return users.get_user_by_token(token)
 
 def create_user_token(user):
     token=users.create_token(user)

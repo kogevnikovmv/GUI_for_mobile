@@ -24,3 +24,6 @@ class Token(BaseModel):
 class UserToken(BaseModel):
     sub: int
     token: Token={}
+
+class AuthToken(BaseModel):
+    token: str

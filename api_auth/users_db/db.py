@@ -76,5 +76,9 @@ class UsersDB():
         user = self.Users.get_or_none(email=email)
         return user
 
+    def get_user_by_token(self, token):
+        token=self.Tokens.get_or_none(token=token)
+        return token
+
 
 
