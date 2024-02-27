@@ -16,8 +16,9 @@ from kivy.uix.image import Image
 
 from kivy.clock import Clock
 
-import requests
-from kivy.network.urlrequest import UrlRequest
+import httpx
+import asyncio
+
 
 # описание логин скрина на kv language
 Builder.load_string('''
@@ -99,19 +100,8 @@ Builder.load_string('''
 <HomeScreen>:
     id: homescreen''')
 
-# <LogoScreen>:
-#    id: logoscreen
-#    Image:
-#        id: logo_img
-#        source: 'static_files/main_logo.png'
-#        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-#        size_hint_y: 0.7
-#        size_hint_x: 0.7
-#        fit_mode: 'contain'
-#            ''')
 
 storage = JsonStore('static_files/data_app.json')
-storage.put('auth_token', token='adffewefvjhvfjwvfg')
 
 
 
@@ -125,22 +115,29 @@ class LogoScreen(Screen):
                           size_hint_x=.7,
                           fit_mode='contain')
         self.add_widget(self.logo)
+        self.data=[]
 
     # функция события(?) срабатывает как экран отобразится
     # не дописана
     def on_enter(self):
         try:
             token = storage.get('auth_token')['token']
-            req=UrlRequest('http://127.0.0.1:8000/auth', req_headers={'Content-Type': 'application/json'}, req_body={'token': token}, on_success=self.check_token_result)
+            print(token) #delete
+            asyncio.ensure_future(self.auth_request(token))
         except(KeyError):
             self.logo_disappeare('login')
 
-    def check_token_result(self, req, result):
-        if result['message']=='ok':
-            self.logo_disappeare('home')
-        else:
-            self.logo_disappeare('login')
 
+
+    async def auth_request(self, token):
+        async with httpx.AsyncClient() as request:
+            response=await request.post("http://127.0.0.1:8000/auth", json={'token': token})
+            self.data=response.json()
+            if 'message' in self.data:
+                if self.data['message']=='ok':
+                    self.logo_disappeare('home')
+            else:
+                self.logo_disappeare('login')
 
 
     #анимация исчезновения лого
@@ -154,38 +151,32 @@ class LogoScreen(Screen):
 
 
 class LoginScreen(Screen):
-
+    def __init__(self, **kwargs):
+        super(LoginScreen, self).__init__(**kwargs)
+        self.data=[]
+        self.email=None
+        self.reg_button=None
     # идентификация пользователя
     def login(self):
         # получение пароля\логина по id
         login = self.ids.login.text
         password = self.ids.password.text
-        print('ok?')
-        req = UrlRequest('http://127.0.0.1:8000/login',
-                         on_failure=self.failure_req,
-                         on_error=self.error_req,
-                         req_body={"username": login, "password": password}, on_success=self.get_user_token)
+        asyncio.ensure_future(self.login_request(login, password))
 
 
-    def failure_req(self, req, result):
-        print(str(result))
-        print(str(req.error))
+    async def login_request(self, login, password):
+        async with httpx.AsyncClient() as request:
+            response=await request.post("http://127.0.0.1:8000/login", json={'username': login, 'password': password})
+            self.data=response.json()
+            if self.data['token']:
+                token = self.data['token']
+                storage.put('auth_token', token=token['token'])
+                self.manager.current = 'home'
+            else:
+                print(self.data) #delete
+                self.ids.error_text.text = 'login/pass incorrect'
 
-    def error_req(self, req, result):
-        print(str(result))
-        print(str(req.error))
 
-    def get_user_token(self, req, result):
-        print(result)
-        if result['token']:
-            token=result['token']
-            storage.put('auth_token', token=token['token'])
-            self.go_to_screen('home')
-        else:
-            print(result)
-
-    def go_to_screen(self, screen):
-        self.manager.current = screen
 
 
     # анимация исчезновения окна логина
@@ -208,35 +199,44 @@ class LoginScreen(Screen):
         self.ids.password.text = ''
         self.ids.welcome_label.text = 'Register'
         self.ids.card.remove_widget(self.ids.login_button)
-        self.reg_button=MDTextField(
+        self.email=MDTextField(
             mode='round',
             hint_text='email',
             icon_right='email',
             size_hint_x=.7,
             font_size=dp(19),
             pos_hint={'center_x': .5})
-        self.ids.card.add_widget(self.reg_button, index=3)
+        self.ids.card.add_widget(self.email, index=3)
         self.ids.card.remove_widget(self.ids.create_account)
-        self.ids.card.add_widget(MDRoundFlatButton(
+
+        self.reg_button=MDRoundFlatButton(
             text='Register',
             pos_hint={'center_x': .5},
-            font_size=dp(19)), index=1)
+            font_size=dp(19))
+        self.reg_button.bind(on_press=self.register)
+        self.ids.card.add_widget(self.reg_button, index=1)
         self.register_form_appeare()
 
-    def register(self):
+    def register(self, instance):
         login = self.ids.login.text
-        email=self.reg_button.text
+        email=self.email.text
         password = self.ids.password.text
-        response = requests.post('http://127.0.0.1:8000/login',
-                                 json={"username": login, "email": email, "password": password})
-        if not response.json().get('token'):
-            self.ids.error_text.text = 'registration gone wrong=)'
-        elif response.json().get('token'):
-            token = response.json().get('token')
-            token = token.get('token')
-            print(token)#delete
-            storage.put('auth_token', token=token)
-            self.go_to_home_screen()
+        asyncio.ensure_future(self.register_request(login, email, password))
+
+
+    async def register_request(self, login, email, password):
+        async with httpx.AsyncClient() as request:
+            response=await request.post("http://127.0.0.1:8000/register", json={'username': login, 'email': email, 'password': password})
+            self.data=response.json()
+            if not self.data['token']:
+                self.ids.error_text.text = 'registration gone wrong=)'
+            elif self.data['token']:
+                token = self.data['token']
+                storage.put('auth_token', token=token['token'])
+                self.manager.current = 'home'
+            else:
+                print(self.data) #delete
+                self.ids.error_text.text = 'login/pass incorrect'
 
 # главное окно
 class HomeScreen(Screen):
@@ -270,4 +270,7 @@ class SamuraiPath(MDApp):
 
 
 if __name__ == '__main__':
-    SamuraiPath().run()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(SamuraiPath().async_run(async_lib="asyncio"))
+    loop.close()
+    #SamuraiPath().run()

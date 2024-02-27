@@ -24,8 +24,10 @@ def db_close():
     print('db closed')
 
 @auth_router.post('/auth')
+# токен в приложениии и в базе не совпадают, разница в наличии дефисов в токена в бд
 async def auth(token: models.AuthToken):
-    if check_token():
+    print(str(token.token))
+    if check_token(token.token):
         # =)
         return {'message': 'ok'}
     else:
